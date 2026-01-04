@@ -204,11 +204,30 @@
             requestAnimationFrame(() => el.classList.add('spawned'));
         }
 
-        function setupBubbleObject(el, data, isStatus) {
+function setupBubbleObject(el, data, isStatus) {
             const ww = window.innerWidth, wh = window.innerHeight;
-            const bObj = { el, x: ww/2 + (Math.random()-0.5)*200, y: wh/2 + (Math.random()-0.5)*200, vx: 0, vy: 0, isDragged: false, data };
+            
+            // 1. 定义初始位置（屏幕中心随机偏移）
+            const initialX = ww/2 + (Math.random()-0.5)*200 - 60; // 减去泡泡半径的一半
+            const initialY = wh/2 + (Math.random()-0.5)*200 - 60;
+
+            const bObj = { 
+                el, 
+                x: initialX, 
+                y: initialY, 
+                vx: (Math.random()-0.5)*2, // 给一点初始初速度
+                vy: (Math.random()-0.5)*2, 
+                isDragged: false, 
+                data 
+            };
+
+            // 2. 重要：立刻手动设置一次位移，防止它闪现到左上角(0,0)
+            el.style.transform = `translate3d(${initialX}px, ${initialY}px, 0)`;
+
+            // 拖拽逻辑保持不变
             el.addEventListener('touchstart', (e) => { draggedBubble = bObj; bObj.isDragged = true; }, {passive: false});
             window.addEventListener('touchend', () => { if(draggedBubble) { draggedBubble.isDragged = false; draggedBubble = null; } });
+            
             return bObj;
         }
 
