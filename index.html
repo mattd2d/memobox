@@ -10,7 +10,25 @@
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
 
     <style>
-        /* --- 样式完全保留 --- */
+        /* --- 弹窗样式 --- */
+        #confirm-layer { 
+            position: fixed; inset: 0; z-index: 20000; 
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); 
+            display: none; align-items: center; justify-content: center; opacity: 0; transition: 0.3s; 
+        }
+        .confirm-card { 
+            width: 85%; max-width: 320px; background: rgba(255,255,255,0.08); 
+            padding: 30px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.1); text-align: center; 
+        }
+        .confirm-card h2 { font-size: 18px; font-weight: 600; margin-bottom: 12px; color: #fff; }
+        .confirm-card p { font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.6; margin-bottom: 25px; }
+        .confirm-btns { display: flex; gap: 12px; }
+        .c-btn { flex: 1; padding: 15px; border-radius: 15px; border: none; font-weight: 700; font-family: inherit; font-size: 12px; cursor: pointer; transition: 0.2s; }
+        .c-btn.cancel { background: rgba(255,255,255,0.1); color: white; }
+        .c-btn.confirm { background: #ffffff; color: #000; }
+        .c-btn.danger { background: #ff3b30; color: white; }
+        
+        /* --- 原始样式保持不变 --- */
         #setup-layer { position: fixed; inset: 0; z-index: 10000; background: #1a1a1a; display: flex; align-items: center; justify-content: center; transition: opacity 0.8s ease, transform 0.8s ease; }
         .setup-card { width: 85%; max-width: 400px; color: white; text-align: left; background: rgba(255,255,255,0.05); padding: 30px; border-radius: 30px; backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); }
         .setup-card h2 { font-size: 22px; margin-bottom: 20px; font-weight: 600; font-family: 'Poppins'; }
@@ -41,25 +59,8 @@
         .bubble { position: absolute; border-radius: 50%; width: 120px; height: 120px; background: rgba(255, 255, 255, 0.12); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.2); cursor: grab; pointer-events: auto; opacity: 0; display: flex; align-items: center; justify-content: center; will-change: transform, opacity; z-index: 3000; top: 0; left: 0; }
         .bubble > * { pointer-events: none; }
         .bubble.spawned { opacity: 1; transition: opacity 1s ease-out; }
-/* 透明泡泡：设置文字为白色 */
-.bubble.is-text { 
-    padding: 18px; 
-    font-size: 11px; 
-    color: #ffffff !important; /* 透明球里的字改为白色 */
-    text-align: center; 
-    line-height: 1.4; 
-    font-weight: 400; 
-}
-
-/* 白色实心泡泡：强制背景白，文字黑 */
-.bubble.is-status { 
-    background: #ffffff !important; 
-    border: none; 
-    color: #000000 !important; /* 白色球里的字保持黑色 */
-    font-weight: 700; 
-    text-transform: uppercase; 
-    font-size: 11px; 
-}
+        .bubble.is-text { padding: 18px; font-size: 11px; color: #ffffff !important; text-align: center; line-height: 1.4; font-weight: 400; }
+        .bubble.is-status { background: #ffffff !important; border: none; color: #000000 !important; font-weight: 700; text-transform: uppercase; font-size: 11px; }
         .unread-dot { position: absolute; top: 18px; right: 18px; width: 8px; height: 8px; background: #ff3b30; border-radius: 50%; }
         #modal-overlay { position: fixed; inset: 0; z-index: 6000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); background: rgba(0,0,0,0.3); opacity: 0; transition: 0.4s; }
         #modal-overlay.active { display: flex; opacity: 1; }
@@ -90,7 +91,6 @@
     <div id="top-notif"><div style="width: 8px; height: 8px; background: #ff3b30; border-radius: 50%;"></div><span id="notif-text" style="font-size: 12px; color: #333;"></span></div>
     <div class="bg-glass"></div>
     <canvas id="lineCanvas"></canvas>
-    <div id="hidden-trigger"></div>
 
     <div id="modal-overlay" onclick="closeModal()">
         <div class="modal-card" onclick="event.stopPropagation()">
@@ -115,6 +115,17 @@
     </div>
     <div id="stage"></div>
 
+    <div id="confirm-layer">
+        <div class="confirm-card">
+            <h2 id="confirm-title">Title</h2>
+            <p id="confirm-msg">Message goes here...</p>
+            <div class="confirm-btns">
+                <button class="c-btn cancel" onclick="hideConfirm()">Cancel</button>
+                <button class="c-btn confirm" id="confirm-action-btn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // --- Firebase 配置 ---
         const firebaseConfig = {
@@ -138,7 +149,39 @@
         let draggedBubble = null;
         const pageStartTime = Date.now();
 
-        // --- 核心修正：适配高 DPR 屏幕 ---
+        // --- 弹窗控制逻辑 ---
+        function showConfirm(title, msg, onConfirm, isDanger = false) {
+            const layer = document.getElementById('confirm-layer');
+            const btn = document.getElementById('confirm-action-btn');
+            document.getElementById('confirm-title').innerText = title;
+            document.getElementById('confirm-msg').innerText = msg;
+            layer.style.display = 'flex';
+            setTimeout(() => layer.style.opacity = '1', 10);
+            btn.className = isDanger ? 'c-btn danger' : 'c-btn confirm';
+            btn.onclick = () => { onConfirm(); hideConfirm(); };
+        }
+
+        function hideConfirm() {
+            const layer = document.getElementById('confirm-layer');
+            layer.style.opacity = '0';
+            setTimeout(() => layer.style.display = 'none', 300);
+        }
+
+        function handleHardReset() {
+            showConfirm(
+                "Reset System?", 
+                "This will clear all cloud data and messages. This action cannot be undone.", 
+                () => {
+                    configRef.remove();
+                    msgRef.push({ type: 'clear_all', time: Date.now() }).then(() => {
+                        location.reload();
+                    });
+                },
+                true
+            );
+        }
+
+        // --- 物理引擎与渲染 ---
         function resizeCanvas() {
             const dpr = window.devicePixelRatio || 1;
             canvas.width = window.innerWidth * dpr;
@@ -221,48 +264,27 @@
             return bObj;
         }
 
-        // --- 核心修正：物理引擎与精确连线 ---
         function animate(time) {
             ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
-            const ww = window.innerWidth, wh = window.innerHeight;
-            const cx = ww / 2, cy = wh / 2;
-
+            const ww = window.innerWidth, wh = window.innerHeight, cx = ww / 2, cy = wh / 2;
             ctx.beginPath();
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
             ctx.lineWidth = 1.5;
-            
             bubbles.forEach((b, i) => {
-                const currX = b.x + 60;
-                const currY = b.y + 60;
-
-                let prevX, prevY;
-                if (i === 0) {
-                    prevX = cx; prevY = cy; 
-                } else {
-                    prevX = bubbles[i-1].x + 60;
-                    prevY = bubbles[i-1].y + 60;
-                }
-
+                const currX = b.x + 60, currY = b.y + 60;
+                let prevX = cx, prevY = cy;
+                if (i > 0) { prevX = bubbles[i-1].x + 60; prevY = bubbles[i-1].y + 60; }
                 ctx.moveTo(prevX, prevY);
-                // 修复了 prevY 的变量引用错误
                 ctx.quadraticCurveTo((prevX + currX)/2, (prevY + currY)/2 + Math.sin(time*0.002+i)*10, currX, currY);
-                
                 if (!b.isDragged) {
                     const cdx = currX - cx, cdy = currY - cy, cdist = Math.sqrt(cdx*cdx + cdy*cdy) || 1;
-                    b.vx += (-cdy/cdist) * 0.0008; 
-                    b.vx += (cx - currX) * 0.00003;
+                    b.vx += (-cdy/cdist) * 0.0008; b.vx += (cx - currX) * 0.00003;
                     bubbles.forEach((b2, j) => {
                         if(i === j) return;
                         const pdx = (b2.x+60) - currX, pdy = (b2.y+60) - currY, pdist = Math.hypot(pdx, pdy) || 1;
-                        if(pdist < 135) {
-                            const p = (135 - pdist) * 0.02;
-                            b.vx -= (pdx/pdist)*p; b.vy -= (pdy/pdist)*p;
-                        }
+                        if(pdist < 135) { const p = (135 - pdist) * 0.02; b.vx -= (pdx/pdist)*p; b.vy -= (pdy/pdist)*p; }
                     });
-                    if(cdist < 100) {
-                        const p = (100 - cdist) * 0.05;
-                        b.vx += (cdx/cdist)*p; b.vy += (cdy/cdist)*p;
-                    }
+                    if(cdist < 100) { const p = (100 - cdist) * 0.05; b.vx += (cdx/cdist)*p; b.vy += (cdy/cdist)*p; }
                     b.vx *= 0.92; b.vy *= 0.92; b.x += b.vx; b.y += b.vy;
                 }
                 b.x = Math.max(0, Math.min(ww - 120, b.x));
@@ -274,16 +296,12 @@
         }
 
         window.addEventListener('mousemove', (e) => { 
-            if (draggedBubble) { 
-                draggedBubble.x = e.clientX - 60; 
-                draggedBubble.y = e.clientY - 60; 
-            } 
+            if (draggedBubble) { draggedBubble.x = e.clientX - 60; draggedBubble.y = e.clientY - 60; } 
         });
         window.addEventListener('touchmove', (e) => { 
             if (draggedBubble) { 
                 const touch = e.touches[0];
-                draggedBubble.x = touch.clientX - 60; 
-                draggedBubble.y = touch.clientY - 60; 
+                draggedBubble.x = touch.clientX - 60; draggedBubble.y = touch.clientY - 60; 
                 e.preventDefault(); 
             } 
         }, {passive: false});
@@ -323,24 +341,13 @@
             reader.readAsDataURL(fileInput.files[0]);
         }
 
-        function handleHardReset() { if(confirm("Reset all data?")) { configRef.remove(); msgRef.push({ type: 'clear_all', time: Date.now() }); location.reload(); } }
+        function initPhysics() { resizeCanvas(); animate(0); }
+        function toggleLike() { document.getElementById('btn-like').classList.toggle('liked'); }
+        function toggleCommentBox() { const area = document.getElementById('comment-area'); area.style.display = area.style.display === 'none' ? 'block' : 'none'; }
         
-        function initPhysics() { 
-            resizeCanvas(); 
-            animate(0); 
-        }
-
-        function triggerTopNotif(txt) {
-            const nt = document.getElementById('top-notif');
-            document.getElementById('notif-text').innerText = txt;
-            nt.classList.add('active');
-            setTimeout(() => nt.classList.remove('active'), 3000);
-        }
-
         function openModal(b) {
             const visual = document.getElementById('m-visual');
-            if (b.data.type === 'img' && b.data.rawImg) { visual.innerHTML = `<img src="${b.data.rawImg}" style="width:100%; border-radius:15px; margin-bottom:15px;">`; } 
-            else { visual.innerHTML = ""; }
+            visual.innerHTML = (b.data.type === 'img' && b.data.rawImg) ? `<img src="${b.data.rawImg}" style="width:100%; border-radius:15px; margin-bottom:15px;">` : "";
             document.getElementById('m-text').innerText = b.data.content || "";
             document.getElementById('comment-list').innerHTML = "";
             const modal = document.getElementById('modal-overlay');
@@ -354,8 +361,6 @@
             setTimeout(() => modal.style.display = 'none', 400);
         }
 
-        function toggleLike() { document.getElementById('btn-like').classList.toggle('liked'); }
-        function toggleCommentBox() { const area = document.getElementById('comment-area'); area.style.display = area.style.display === 'none' ? 'block' : 'none'; }
         function postComment() { 
             const input = document.getElementById('comment-input'); 
             const list = document.getElementById('comment-list'); 
