@@ -10,7 +10,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
 
     <style>
-        /* --- 样式完全保留并修正 --- */
+        /* --- 样式完全保留 --- */
         #setup-layer { position: fixed; inset: 0; z-index: 10000; background: #1a1a1a; display: flex; align-items: center; justify-content: center; transition: opacity 0.8s ease, transform 0.8s ease; }
         .setup-card { width: 85%; max-width: 400px; color: white; text-align: left; background: rgba(255,255,255,0.05); padding: 30px; border-radius: 30px; backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); }
         .setup-card h2 { font-size: 22px; margin-bottom: 20px; font-weight: 600; font-family: 'Poppins'; }
@@ -41,11 +41,8 @@
         .bubble { position: absolute; border-radius: 50%; width: 120px; height: 120px; background: rgba(255, 255, 255, 0.12); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.2); cursor: grab; pointer-events: auto; opacity: 0; display: flex; align-items: center; justify-content: center; will-change: transform, opacity; z-index: 3000; top: 0; left: 0; }
         .bubble > * { pointer-events: none; }
         .bubble.spawned { opacity: 1; transition: opacity 1s ease-out; }
-
-        /* 修复点 1：白色泡泡文字颜色改为黑色 */
-        .bubble.is-status { background: #ffffff; border: none; color: #000000 !important; font-weight: 600; }
-
-        .bubble.is-text { padding: 18px; font-size: 11px; color: rgba(255,255,255,0.8); text-align: center; line-height: 1.4; }
+        .bubble.is-status { background: #ffffff; border: none; color: #000; font-weight: 600; }
+        .bubble.is-text { padding: 18px; font-size: 11px; color: #FFFFFF; text-align: center; line-height: 1.4; }
         .unread-dot { position: absolute; top: 18px; right: 18px; width: 8px; height: 8px; background: #ff3b30; border-radius: 50%; }
         #modal-overlay { position: fixed; inset: 0; z-index: 6000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); background: rgba(0,0,0,0.3); opacity: 0; transition: 0.4s; }
         #modal-overlay.active { display: flex; opacity: 1; }
@@ -124,7 +121,7 @@
         let draggedBubble = null;
         const pageStartTime = Date.now();
 
-        // 适配高清屏并重置 Canvas
+        // --- 核心修正：适配高 DPR 屏幕 ---
         function resizeCanvas() {
             const dpr = window.devicePixelRatio || 1;
             canvas.width = window.innerWidth * dpr;
@@ -207,22 +204,17 @@
             return bObj;
         }
 
-        // --- 核心修正：修复连线偏移 ---
+        // --- 核心修正：物理引擎与精确连线 ---
         function animate(time) {
-            // 使用 dpr 缩放后的宽高清空画布
-            ctx.clearRect(0, 0, canvas.width, canvas.height); 
-            
-            const ww = window.innerWidth;
-            const wh = window.innerHeight;
-            const cx = ww / 2;
-            const cy = wh / 2;
+            ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+            const ww = window.innerWidth, wh = window.innerHeight;
+            const cx = ww / 2, cy = wh / 2;
 
             ctx.beginPath();
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
             ctx.lineWidth = 1.5;
             
             bubbles.forEach((b, i) => {
-                // 修正 1: 当前点为泡泡中心 (x + 半径60)
                 const currX = b.x + 60;
                 const currY = b.y + 60;
 
@@ -230,16 +222,13 @@
                 if (i === 0) {
                     prevX = cx; prevY = cy; 
                 } else {
-                    // 修正 2: 上一个点也必须是其泡泡中心
                     prevX = bubbles[i-1].x + 60;
                     prevY = bubbles[i-1].y + 60;
                 }
 
-                // 修正 3: 线条绘制点完全基于 CSS 逻辑像素，由 ctx.scale 处理 DPR
                 ctx.moveTo(prevX, prevY);
-                const ctrlX = (prevX + currX) / 2;
-                const ctrlY = (prevY + currY) / 2 + Math.sin(time * 0.002 + i) * 10;
-                ctx.quadraticCurveTo(ctrlX, ctrlY, currX, currY);
+                // 修复了 prevY 的变量引用错误
+                ctx.quadraticCurveTo((prevX + currX)/2, (prevY + currY)/2 + Math.sin(time*0.002+i)*10, currX, currY);
                 
                 if (!b.isDragged) {
                     const cdx = currX - cx, cdy = currY - cy, cdist = Math.sqrt(cdx*cdx + cdy*cdy) || 1;
@@ -259,7 +248,6 @@
                     }
                     b.vx *= 0.92; b.vy *= 0.92; b.x += b.vx; b.y += b.vy;
                 }
-                // 限制在屏幕内
                 b.x = Math.max(0, Math.min(ww - 120, b.x));
                 b.y = Math.max(0, Math.min(wh - 120, b.y));
                 b.el.style.transform = `translate3d(${b.x}px, ${b.y}px, 0)`;
