@@ -42,7 +42,21 @@
         body { background: #1a1a1a; font-family: 'Poppins', sans-serif; overflow: hidden; height: 100vh; width: 100vw; touch-action: none; }
         body.state-hero #stage, body.state-hero #lineCanvas { opacity: 0; pointer-events: none; }
         .center-hub { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 4000; pointer-events: none; }
-        .main-avatar { width: 76px; height: 76px; border-radius: 50%; background: rgba(255,255,255,0.1); overflow: hidden; transition: all 1s cubic-bezier(0.19, 1, 0.22, 1); cursor: pointer; pointer-events: auto; z-index: 4001; box-shadow: none; flex-shrink: 0; transform: translateY(0); }
+ .main-avatar { 
+    width: 76px; 
+    height: 76px; 
+    border-radius: 50%; 
+    background: rgba(255,255,255,0.1); 
+    overflow: hidden; 
+    transition: all 1s cubic-bezier(0.19, 1, 0.22, 1); 
+    cursor: pointer; 
+    pointer-events: auto; 
+    z-index: 4001; 
+    flex-shrink: 0; 
+    transform: translateY(0);
+    /* 核心统一：添加描边样式 */
+    border: 2px solid rgba(255,255,255,0.2); 
+}
         body.state-hero .main-avatar { width: 280px; height: 280px; box-shadow: 0 30px 80px rgba(0,0,0,0.6); transform: translateY(-60px); }
         .hero-text-block { position: absolute; top: 50%; left: 0; width: 100%; padding-top: 100px; text-align: center; color: white; transition: all 0.7s ease; pointer-events: none; opacity: 0; transform: translateY(20px); }
         body.state-hero .hero-text-block { opacity: 1; transform: translateY(0); }
