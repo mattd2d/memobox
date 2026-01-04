@@ -10,45 +10,46 @@
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
 
     <style>
-        /* --- 核心样式统一 --- */
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
         body { background: #1a1a1a; font-family: 'Poppins', sans-serif; overflow: hidden; height: 100vh; width: 100vw; touch-action: none; color: white; }
         
-        /* 连线与背景 */
         #lineCanvas { position: fixed; inset: 0; z-index: 50; pointer-events: none; }
         .bg-glass { position: fixed; inset: 0; z-index: -1; background: #222; background-position: center; background-size: cover; transform: scale(1.8); filter: blur(60px) brightness(0.4); }
         
-        /* 介绍信息 */
         .intro-container { position: fixed; top: 18%; width: 100%; text-align: center; z-index: 4000; pointer-events: none; padding: 0 40px; }
         #display-name { font-size: 19px; font-weight: 600; margin-bottom: 8px; opacity: 0; transition: opacity 1s; text-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         #display-desc { font-size: 11px; opacity: 0; transition: opacity 1s 0.5s; line-height: 1.6; color: rgba(255,255,255,0.6); max-width: 260px; margin: 0 auto; font-style: italic; }
 
-        /* 中心区域与头像 */
         .center-hub { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 4000; pointer-events: none; }
         .avatar-wrapper { position: relative; pointer-events: auto; cursor: pointer; display: flex; flex-direction: column; align-items: center; }
         .main-avatar { 
             width: 84px; height: 84px; border-radius: 50%; background: rgba(255,255,255,0.1); 
             overflow: hidden; z-index: 4001; transition: transform 0.3s; 
-            border: 2px solid rgba(255,255,255,0.2); /* 统一的描边 */
+            border: 2px solid rgba(255,255,255,0.2); 
         }
         .main-avatar img { width: 100%; height: 100%; object-fit: cover; }
         
-        /* 涟漪动画 */
         .ripple { position: absolute; width: 84px; height: 84px; border: 2px solid rgba(255,255,255,0.4); border-radius: 50%; animation: ripple-effect 2.5s infinite; z-index: 4000; }
         @keyframes ripple-effect { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(2.2); opacity: 0; } }
 
         #status-hint { margin-top: 20px; font-size: 9px; letter-spacing: 2px; opacity: 0.5; animation: blink 2s infinite; }
         @keyframes blink { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.7; } }
 
-        /* 气泡样式 */
         #stage { position: absolute; inset: 0; z-index: 2500; pointer-events: none; }
-        .bubble { position: absolute; border-radius: 50%; width: 120px; height: 120px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.2); cursor: grab; pointer-events: auto; opacity: 0; display: flex; align-items: center; justify-content: center; will-change: transform, opacity; z-index: 3000; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .bubble { 
+            position: absolute; border-radius: 50%; width: 120px; height: 120px; 
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); 
+            -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.2); 
+            cursor: grab; pointer-events: auto; opacity: 0; display: flex; 
+            align-items: center; justify-content: center; will-change: transform, opacity; 
+            z-index: 3000; box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            user-select: none; -webkit-user-select: none;
+        }
         .bubble.spawned { opacity: 1; transition: opacity 1s ease-out; }
         .bubble.is-text { padding: 18px; font-size: 11px; color: #000000 !important; text-align: center; line-height: 1.4; font-weight: 400; }
         .bubble.is-status { background: #ffffff; border: none; color: #000000 !important; font-weight: 700; text-transform: uppercase; font-size: 10px; }
         .bubble.is-plus { border: 2px dashed rgba(255,255,255,0.4); background: rgba(255,255,255,0.1); font-size: 32px; color: white; cursor: pointer; backdrop-filter: none; box-shadow: none; }
 
-        /* 弹窗样式 */
         #confirm-layer { position: fixed; inset: 0; z-index: 20000; background: rgba(0,0,0,0.8); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); display: none; align-items: center; justify-content: center; opacity: 0; transition: 0.3s; }
         .confirm-card { width: 85%; max-width: 320px; background: rgba(255,255,255,0.08); padding: 30px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.1); text-align: center; }
         .confirm-card h2 { font-size: 18px; font-weight: 600; margin-bottom: 12px; color: #fff; }
@@ -112,7 +113,6 @@
     </div>
 
     <script>
-        // --- Firebase 配置 ---
         const firebaseConfig = {
             apiKey: "AIzaSyC7OLP-hG6ekdLQewLrB9BFGQCuzRlbnTE",
             authDomain: "memo-6a74a.firebaseapp.com",
@@ -133,7 +133,6 @@
         let bubbles = [];
         let hasPickedUp = false;
 
-        // --- 弹窗逻辑 ---
         function showConfirm(title, msg, onConfirm, isDanger = false) {
             const layer = document.getElementById('confirm-layer');
             const btn = document.getElementById('confirm-action-btn');
@@ -164,7 +163,6 @@
             }, true);
         }
 
-        // --- 初始化与同步 ---
         window.onload = function() {
             configRef.on('value', (snapshot) => {
                 const data = snapshot.val();
@@ -191,12 +189,10 @@
                     Object.values(val).forEach(m => { if (m.text === "SOME ONE PICKED IT UP") foundPickup = true; });
                 }
                 hasPickedUp = foundPickup;
-                
                 const display = hasPickedUp ? 'none' : 'block';
                 document.getElementById('status-hint').style.display = display;
                 document.querySelectorAll('.ripple').forEach(r => r.style.display = display);
                 if(hasPickedUp) document.getElementById('intro-box').style.display = 'none';
-                
                 refreshState(val);
             });
         };
@@ -217,7 +213,6 @@
             }
         }
 
-        // --- 气泡创建 ---
         function createPlusBubble() {
             const el = document.createElement('div');
             el.className = 'bubble is-plus'; el.innerHTML = '+';
@@ -246,20 +241,41 @@
             requestAnimationFrame(() => el.classList.add('spawned'));
         }
 
-        // --- 物理引擎 ---
         function setupBubbleObject(el, data, isStatus) {
             const ww = window.innerWidth, wh = window.innerHeight;
-            const initialX = ww/2 + (Math.random()-0.5)*150 - 60;
-            const initialY = wh/2 + (Math.random()-0.5)*150 - 60;
+            // 修正：初始坐标设为中心，防止新气泡生成时连线瞬闪错位
+            const initialX = ww/2 - 60;
+            const initialY = wh/2 - 60;
             const bObj = { el, x: initialX, y: initialY, vx: 0, vy: 0, isDragged: false, data, isStatus };
             
-            const start = (e) => { bObj.isDragged = true; };
+            // 优化点击灵敏度
+            let startT, startX, startY;
+
+            const start = (e) => { 
+                bObj.isDragged = true; 
+                const t = e.touches ? e.touches[0] : e;
+                startT = Date.now();
+                startX = t.clientX;
+                startY = t.clientY;
+            };
+
             const move = (e) => {
                 if (!bObj.isDragged) return;
                 const t = e.touches ? e.touches[0] : e;
                 bObj.x = t.clientX - 60; bObj.y = t.clientY - 60;
             };
-            const end = () => { bObj.isDragged = false; };
+
+            const end = (e) => { 
+                if (!bObj.isDragged) return;
+                bObj.isDragged = false; 
+                // 点击判定放宽：时间短于350ms且位移小于20px即为有效点击
+                const duration = Date.now() - startT;
+                if (duration < 350) {
+                    if (data.type === 'plus') {
+                        document.getElementById('menu-layer').style.display = 'flex';
+                    }
+                }
+            };
 
             el.addEventListener('mousedown', start);
             el.addEventListener('touchstart', start, {passive: false});
@@ -274,7 +290,6 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             const ww = window.innerWidth, wh = window.innerHeight, cx = ww / 2, cy = wh / 2;
             
-            // 连线对齐修正：严格从头像中心出发
             const startX = cx;
             const startY = cy;
 
@@ -284,8 +299,12 @@
 
             bubbles.forEach((b, i) => {
                 const currX = b.x + 60, currY = b.y + 60;
+                // 修正：强制第一个气泡连向头像中心，后续按顺序连接
                 let prevX = startX, prevY = startY;
-                if (i > 0) { prevX = bubbles[i-1].x + 60; prevY = bubbles[i-1].y + 60; }
+                if (i > 0 && bubbles[i-1]) { 
+                    prevX = bubbles[i-1].x + 60; 
+                    prevY = bubbles[i-1].y + 60; 
+                }
 
                 ctx.moveTo(prevX, prevY);
                 ctx.quadraticCurveTo((prevX + currX)/2, (prevY + currY)/2 + Math.sin(time*0.002+i)*10, currX, currY);
