@@ -247,67 +247,71 @@
         }
 
    function setupBubbleObject(el, data, isStatus) {
-            const ww = window.innerWidth, wh = window.innerHeight;
-            const initialX = ww/2 + (Math.random()-0.5)*200 - 60;
-            const initialY = wh/2 + (Math.random()-0.5)*200 - 60;
-            const bObj = { el, x: initialX, y: initialY, vx: 0, vy: 0, isDragged: false, data, isStatus };
-            
-            let startX, startY, startTime;
-            let hasMovedSignificantly = false; // 新增：标记是否真的在拖拽
+    const ww = window.innerWidth, wh = window.innerHeight;
+    const initialX = ww/2 + (Math.random()-0.5)*200 - 60;
+    const initialY = wh/2 + (Math.random()-0.5)*200 - 60;
+    const bObj = { el, x: initialX, y: initialY, vx: 0, vy: 0, isDragged: false, data, isStatus };
+    
+    let startX, startY, startTime;
+    let isPossibleClick = false;
 
-            const startAction = (e) => { 
-                startTime = Date.now(); 
-                const touch = e.touches ? e.touches[0] : e; 
-                startX = touch.clientX; 
-                startY = touch.clientY; 
-                hasMovedSignificantly = false; // 重置标记
-                
-                draggedBubble = bObj; 
-                bObj.isDragged = true; 
-            };
+    const startAction = (e) => { 
+        const touch = e.touches ? e.touches[0] : e; 
+        startX = touch.clientX; 
+        startY = touch.clientY; 
+        startTime = Date.now();
+        
+        isPossibleClick = true; // 初始标记为可能是点击
+        draggedBubble = bObj; 
+        bObj.isDragged = true; 
+    };
 
-            const endAction = (e) => { 
-                if(!bObj.isDragged) return; 
-                
-                const duration = Date.now() - startTime; 
-                const touch = e.changedTouches ? e.changedTouches[0] : e; 
-                const endX = touch.clientX;
-                const endY = touch.clientY;
-                
-                // 计算实际位移
-                const dist = Math.hypot(endX - startX, endY - startY); 
-
-                // 优化判定逻辑：
-                // 如果时间很短（<300ms）或者 位移真的很小（<15px），就判定为点击
-                if (duration < 300 || dist < 15) { 
-                    // 只有在没被当做长距离拖拽时才触发
-                    if (!hasMovedSignificantly || dist < 20) {
-                        const dot = el.querySelector('.unread-dot'); 
-                        if(dot) dot.style.display = 'none'; 
-                        openModal(bObj); 
-                        
-                        // 强制重置物理速度，防止点击时气泡乱飞
-                        bObj.vx = 0; bObj.vy = 0;
-                    }
-                }
-
-                bObj.isDragged = false; 
-                draggedBubble = null; 
-            };
-
-            // 监听移动，如果位移过大，标记为“正在拖拽”
-            el.addEventListener('touchmove', (e) => {
-                const touch = e.touches[0];
-                const moveDist = Math.hypot(touch.clientX - startX, touch.clientY - startY);
-                if (moveDist > 10) hasMovedSignificantly = true;
-            }, {passive: true});
-
-            el.addEventListener('mousedown', startAction);
-            el.addEventListener('touchstart', startAction, {passive: false});
-            window.addEventListener('mouseup', endAction);
-            window.addEventListener('touchend', endAction);
-            return bObj;
+    const moveAction = (e) => {
+        if (!bObj.isDragged) return;
+        const touch = e.touches ? e.touches[0] : e;
+        const moveDist = Math.hypot(touch.clientX - startX, touch.clientY - startY);
+        
+        // 如果移动距离超过 10px，判定为拖拽，不再触发点击弹窗
+        if (moveDist > 10) {
+            isPossibleClick = false;
         }
+    };
+
+    const endAction = (e) => { 
+        if(!bObj.isDragged) return; 
+        
+        const duration = Date.now() - startTime; 
+        const touch = e.changedTouches ? e.changedTouches[0] : e; 
+        const dist = Math.hypot(touch.clientX - startX, touch.clientY - startY); 
+
+        // 优化判定：时间短 且 位移小，或者是静止点击
+        if (isPossibleClick && duration < 350 && dist < 15) { 
+            // 触发点击业务
+            const dot = el.querySelector('.unread-dot'); 
+            if(dot) dot.style.display = 'none'; 
+            openModal(bObj); 
+            
+            // 点击后让气泡静止，防止漂移
+            bObj.vx = 0; bObj.vy = 0;
+        }
+
+        bObj.isDragged = false; 
+        draggedBubble = null; 
+    };
+
+    // 绑定事件
+    el.addEventListener('mousedown', startAction);
+    el.addEventListener('touchstart', startAction, {passive: false});
+    
+    // 监听移动来区分拖拽和点击
+    window.addEventListener('mousemove', moveAction);
+    window.addEventListener('touchmove', moveAction, {passive: false});
+    
+    window.addEventListener('mouseup', endAction);
+    window.addEventListener('touchend', endAction);
+
+    return bObj;
+}
 
 function animate(time) {
             // 1. 清屏（考虑 DPR 缩放）
