@@ -6,11 +6,8 @@
     <title>MEMOCARD</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     
-    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
-
     <style>
-        /* --- 封面与涟漪 --- */
+        /* --- 1. 动画与基础 --- */
         .ripple { 
             position: absolute; width: 100px; height: 100px; 
             border: 2px solid rgba(255,255,255,0.4); border-radius: 50%; 
@@ -18,23 +15,11 @@
         }
         @keyframes ripple-effect { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(2.2); opacity: 0; } }
 
-        /* --- 填写层 --- */
-        #setup-layer { 
-            position: fixed; inset: 0; z-index: 20000; background: #1a1a1a; 
-            display: none; align-items: center; justify-content: center; 
-            opacity: 0; transition: opacity 0.4s ease; 
-        }
-        .setup-card { width: 85%; max-width: 400px; color: white; background: rgba(255,255,255,0.05); padding: 30px; border-radius: 30px; backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); }
-        .input-box { margin-bottom: 20px; }
-        .input-box label { display: block; font-size: 10px; opacity: 0.6; margin-bottom: 8px; text-transform: uppercase; }
-        .input-box input, .input-box textarea { width: 100%; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; padding: 12px; color: white; outline: none; font-family: inherit; }
-        .generate-btn { width: 100%; padding: 16px; border-radius: 15px; border: none; background: #fff; color: #000; font-weight: 600; cursor: pointer; font-size: 16px; }
-
-        /* --- 核心样式 --- */
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
         body { background: #1a1a1a; font-family: 'Poppins', sans-serif; overflow: hidden; height: 100vh; width: 100vw; touch-action: none; }
         
-        #stage, #lineCanvas { position: fixed; inset: 0; transition: opacity 1.2s ease; opacity: 0; pointer-events: none; }
+        /* --- 2. 核心布局 --- */
+        #stage, #lineCanvas { transition: opacity 1.2s ease; opacity: 0; }
         body.ready #stage, body.ready #lineCanvas { opacity: 1; pointer-events: auto; }
         
         .center-hub { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 4000; pointer-events: none; }
@@ -47,23 +32,36 @@
 
         .hero-text-block { position: absolute; top: 50%; left: 0; width: 100%; padding-top: 100px; text-align: center; color: white; transition: 0.7s ease; pointer-events: none; opacity: 0; transform: translateY(20px); }
         body.state-hero .hero-text-block { opacity: 1; transform: translateY(0); }
-        
+        .hero-text-block h1 { font-size: 26px; font-weight: 700; text-transform: uppercase; margin-bottom: 10px; }
+        .hero-text-block .time { font-size: 13px; opacity: 0.5; margin-bottom: 25px; }
+
         .bg-glass { position: fixed; inset: 0; z-index: -1; background: #222; background-position: center; background-size: cover; transform: scale(1.8); filter: blur(60px) brightness(0.4); }
 
-        /* --- 气泡 --- */
+        /* --- 3. 气泡样式 (含特殊白色气泡) --- */
         .bubble { 
             position: absolute; border-radius: 50%; width: 120px; height: 120px; 
             background: rgba(255, 255, 255, 0.12); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); 
             border: 1px solid rgba(255, 255, 255, 0.2); cursor: grab; pointer-events: auto; 
-            display: flex; align-items: center; justify-content: center; will-change: transform; z-index: 3000; 
-            opacity: 0; transition: opacity 1s; 
+            display: flex; align-items: center; justify-content: center; will-change: transform; z-index: 3000; opacity: 0;
         }
-        .bubble.spawned { opacity: 1; }
-        .bubble.is-text { padding: 15px; text-align: center; color: #fff; font-size: 11px; line-height: 1.4; }
+        .bubble.spawned { opacity: 1; transition: opacity 1s ease-out; }
+        .bubble.is-text { padding: 18px; font-size: 11px; color: #fff; text-align: center; line-height: 1.4; }
+        
+        /* 致命错误1修复：恢复白色底状态气泡 */
+        .bubble.is-status { background: #ffffff !important; border: none; color: #000000 !important; font-weight: 700; text-transform: uppercase; }
+        
         .bubble img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; pointer-events: none; }
-        .unread-dot { position: absolute; top: 15px; right: 15px; width: 8px; height: 8px; background: #ff3b30; border-radius: 50%; }
+        .unread-dot { position: absolute; top: 18px; right: 18px; width: 8px; height: 8px; background: #ff3b30; border-radius: 50%; }
 
-        #top-notif { position: fixed; top: -80px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 350px; background: rgba(255,255,255,0.95); padding: 12px 20px; border-radius: 40px; z-index: 5000; transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        /* --- 4. 交互层 --- */
+        #setup-layer { position: fixed; inset: 0; z-index: 10000; background: #1a1a1a; display: none; align-items: center; justify-content: center; }
+        .setup-card { width: 85%; max-width: 400px; color: white; background: rgba(255,255,255,0.05); padding: 30px; border-radius: 30px; backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); }
+        .input-box { margin-bottom: 20px; }
+        .input-box label { display: block; font-size: 10px; opacity: 0.6; margin-bottom: 8px; text-transform: uppercase; }
+        .input-box input, .input-box textarea { width: 100%; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; padding: 12px; color: white; outline: none; font-family: inherit; }
+        .generate-btn { width: 100%; padding: 16px; border-radius: 15px; border: none; background: #fff; color: #000; font-weight: 600; cursor: pointer; }
+        
+        #top-notif { position: fixed; top: -80px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 350px; background: rgba(255,255,255,0.95); padding: 12px 20px; border-radius: 40px; z-index: 5000; transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; align-items: center; gap: 10px; }
         #top-notif.active { transform: translateX(-50%) translateY(100px); }
     </style>
 </head>
@@ -75,7 +73,7 @@
             <div class="main-avatar" style="width: 100px; height: 100px; display: flex; align-items: center; justify-content: center;">
                 <span style="font-size: 30px;">🌱</span>
             </div>
-            <div style="margin-top: 30px; font-size: 10px; letter-spacing: 2px; color: rgba(255,255,255,0.5); text-transform: uppercase;">Tap to Start Flow2</div>
+            <div style="margin-top: 30px; font-size: 10px; letter-spacing: 2px; color: rgba(255,255,255,0.5); text-transform: uppercase;">Tap to Start Flow3</div>
         </div>
     </div>
 
@@ -89,18 +87,16 @@
         </div>
     </div>
 
-    <div id="top-notif"><span id="notif-text" style="font-size: 12px; color: #333;"></span></div>
+    <div id="top-notif"><div style="width: 8px; height: 8px; background: #ff3b30; border-radius: 50%;"></div><span id="notif-text" style="font-size: 12px; color: #333;"></span></div>
     <div class="bg-glass"></div>
     <canvas id="lineCanvas"></canvas>
 
     <div class="center-hub">
-        <div class="main-avatar" id="center-avatar-container" onclick="document.body.classList.toggle('state-hero')">
-            <img id="display-avatar" src="">
-        </div>
+        <div class="main-avatar" onclick="document.body.classList.toggle('state-hero')"><img id="display-avatar" src=""></div>
         <div class="hero-text-block">
             <h1 id="display-name"></h1>
-            <p id="display-date" style="font-size: 12px; opacity: 0.5; margin: 8px 0;"></p>
-            <p id="display-desc" style="max-width: 300px; margin: 0 auto; opacity: 0.8; font-size: 14px;"></p>
+            <p class="time" id="display-date"></p>
+            <p class="description" id="display-desc"></p>
         </div>
     </div>
 
@@ -113,18 +109,21 @@
         const canvas = document.getElementById('lineCanvas');
         const ctx = canvas.getContext('2d');
 
-        // --- 1. 切换与保存 ---
+        // --- 1. 流程 ---
         function enterSetup() {
-            const setup = document.getElementById('setup-layer');
-            setup.style.display = 'flex';
-            requestAnimationFrame(() => setup.style.opacity = '1');
-            setTimeout(() => { document.getElementById('start-cover').style.display = 'none'; }, 400);
+            const cover = document.getElementById('start-cover');
+            cover.style.transition = 'opacity 0.8s ease';
+            cover.style.opacity = '0';
+            setTimeout(() => {
+                cover.style.display = 'none';
+                document.getElementById('setup-layer').style.display = 'flex';
+            }, 800);
         }
 
         function applyCustomization() {
             const fileInput = document.getElementById('upload-img');
             const name = document.getElementById('input-name').value;
-            if (!fileInput.files[0] || !name) return alert("Fill image and name.");
+            if (!fileInput.files[0] || !name) return;
 
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -132,7 +131,7 @@
                 document.getElementById('display-avatar').src = e.target.result;
                 document.getElementById('display-name').innerText = name;
                 document.getElementById('display-desc').innerText = document.getElementById('input-desc').value || "A shared object.";
-                document.getElementById('display-date').innerText = new Date().toLocaleDateString('en-GB').toUpperCase();
+                document.getElementById('display-date').innerText = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
                 document.querySelector('.bg-glass').style.backgroundImage = `url(${e.target.result})`;
 
                 document.body.classList.add('ready');
@@ -143,107 +142,114 @@
             reader.readAsDataURL(fileInput.files[0]);
         }
 
-        // --- 2. 气泡生成逻辑 (恢复原始物理坐标) ---
+        // --- 2. 致命错误3修复：完整消息内容库 ---
+        const firstMessage = { type: 'urgent', text: "Someone picked it up! Your plant has a new home." };
+        const demoMessages = [
+            { mode: 'img', text: "It’s all settled in on my desk and looking very vibrant.", img: "https://picsum.photos/id/28/400/400" },
+            { mode: 'img', text: "A tiny new sprout just appeared; looks like it’s happy here.", img: "https://picsum.photos/id/152/400/400" },
+            { mode: 'text', text: "Fresh water and a little trim today. Looking much cleaner now." },
+            { mode: 'img', text: "Caught some nice afternoon sun on the leaves, thought I’d share.", img: "https://picsum.photos/id/306/400/400" },
+            { mode: 'text', text: "Moved it to a warmer spot now that it's getting cold. Hope you’re doing well." }
+        ];
+        let messageIndex = 0;
+
         function startDemoSequence() {
-            const firstMsg = { type: 'text', content: "Someone picked it up! Your plant has a new home." };
-            createBubble(firstMsg); // 立即生成第一个
-            
-            const demoMessages = [
-                { type: 'img', content: "Happy on my desk.", rawImg: "https://picsum.photos/id/28/400/400" },
-                { type: 'text', content: "Fresh water today." }
-            ];
-            let idx = 0;
+            sendSpecificMessage(firstMessage);
             setInterval(() => {
-                createBubble(demoMessages[idx]);
-                idx = (idx + 1) % demoMessages.length;
+                sendSpecificMessage(demoMessages[messageIndex]);
+                messageIndex = (messageIndex + 1) % demoMessages.length;
             }, 10000);
         }
 
-        function createBubble(data) {
+        function sendSpecificMessage(msg) {
+            document.body.classList.remove('state-hero');
             const el = document.createElement('div');
-            el.className = `bubble is-${data.type}`;
+            // 致命错误1修复：如果是urgent消息，使用is-status类渲染白色泡泡
+            const isUrgent = msg.type === 'urgent';
+            el.className = `bubble ${msg.mode === 'img' ? 'is-img' : 'is-text'} ${isUrgent ? 'is-status' : ''}`;
+            
             el.innerHTML = `<div class="unread-dot"></div>` + 
-                (data.type === 'text' ? `<div style="padding:15px;">${data.content}</div>` : `<img src="${data.rawImg}">`);
+                (msg.mode === 'img' ? `<img src="${msg.img}">` : `<div style="padding:15px; text-align:center;">${msg.text}</div>`);
+            
             stage.appendChild(el);
-
-            // 核心：设置起始坐标为屏幕中心（头像位置）
+            
+            // 确保从中心生成
             const ww = window.innerWidth, wh = window.innerHeight;
             const bObj = { 
-                el, 
-                x: ww/2 - 60, // 初始位置设在中心
-                y: wh/2 - 60, 
-                vx: (Math.random()-0.5)*15, // 给予喷发初速度
-                vy: (Math.random()-0.5)*15, 
-                isDragged: false, 
-                data 
+                el, x: ww/2-60, y: wh/2-60, 
+                vx: (Math.random()-0.5)*12, vy: (Math.random()-0.5)*12, 
+                isDragged: false, data: msg 
             };
 
-            // 交互事件
             const down = () => { bObj.isDragged = true; draggedBubble = bObj; };
             el.addEventListener('mousedown', down);
-            el.addEventListener('touchstart', (e) => { down(); e.preventDefault(); }, {passive: false});
+            el.addEventListener('touchstart', e => { down(); e.preventDefault(); }, {passive:false});
 
             bubbles.push(bObj);
             requestAnimationFrame(() => el.classList.add('spawned'));
 
-            // 通知
             const notif = document.getElementById('top-notif');
-            document.getElementById('notif-text').innerText = "New memory arrived";
+            document.getElementById('notif-text').innerText = "A new memory arrives...";
             notif.classList.add('active');
-            setTimeout(() => notif.classList.remove('active'), 3000);
+            setTimeout(() => notif.classList.remove('active'), 4000);
         }
 
-        // --- 3. 物理引擎与连线 ---
+        // --- 3. 物理引擎与致命错误2修复：串联连线 ---
         function animate(time) {
             const dpr = window.devicePixelRatio || 1;
             ctx.clearRect(0, 0, canvas.width/dpr, canvas.height/dpr);
-            
             const ww = window.innerWidth, wh = window.innerHeight;
-            // 实时获取中心头像的具体位置
-            const avatarRect = document.getElementById('center-avatar-container').getBoundingClientRect();
-            const cx = avatarRect.left + avatarRect.width/2;
-            const cy = avatarRect.top + avatarRect.height/2;
+            
+            const avatarEl = document.querySelector('.main-avatar');
+            let cx = ww/2, cy = wh/2;
+            if (avatarEl) { 
+                const r = avatarEl.getBoundingClientRect(); 
+                cx = r.left+r.width/2; cy = r.top+r.height/2; 
+            }
 
             ctx.beginPath(); ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; ctx.lineWidth = 1.5;
 
             bubbles.forEach((b, i) => {
                 const currX = b.x + 60, currY = b.y + 60;
                 
+                // 致命错误2修复：串联连线逻辑
+                // 第一个连中心，之后每一个连上一个
+                let px = cx, py = cy; 
+                if(i > 0) { 
+                    px = bubbles[i-1].x + 60; 
+                    py = bubbles[i-1].y + 60; 
+                }
+
+                ctx.moveTo(px, py);
+                ctx.quadraticCurveTo((px+currX)/2, (py+currY)/2 + Math.sin(time*0.002+i)*10, currX, currY);
+
                 if (!b.isDragged) {
                     const dx = currX - cx, dy = currY - cy, dist = Math.sqrt(dx*dx+dy*dy)||1;
-                    // 引力与轨道算法
                     b.vx += (-dy/dist)*0.0008 + (cx-currX)*0.00003;
                     b.vy += (dx/dist)*0.0008 + (cy-currY)*0.00003;
                     
-                    // 气泡间排斥
                     bubbles.forEach((b2, j) => {
                         if(i === j) return;
                         const pdx = (b2.x+60)-currX, pdy = (b2.y+60)-currY, pdist = Math.hypot(pdx, pdy)||1;
-                        if(pdist < 130) {
-                            const p = (130-pdist)*0.02;
+                        if(pdist < 135) {
+                            const p = (135-pdist)*0.02;
                             b.vx -= (pdx/pdist)*p; b.vy -= (pdy/pdist)*p;
                         }
                     });
 
-                    // 避免重叠中心头像
                     const safeDist = document.body.classList.contains('state-hero') ? 160 : 80;
                     if(dist < safeDist) {
                         const p = (safeDist-dist)*0.05;
                         b.vx += (dx/dist)*p; b.vy += (dy/dist)*p;
                     }
 
-                    b.vx *= 0.94; b.vy *= 0.94;
+                    b.vx *= 0.92; b.vy *= 0.92;
                     b.x += b.vx; b.y += b.vy;
                 }
 
-                // 边界限制
                 b.x = Math.max(0, Math.min(ww-120, b.x));
                 b.y = Math.max(0, Math.min(wh-120, b.y));
                 b.el.style.transform = `translate3d(${b.x}px, ${b.y}px, 0)`;
-
-                // 画连线：从头像中心到气泡中心
-                ctx.moveTo(cx, cy);
-                ctx.lineTo(currX, currY);
             });
 
             ctx.stroke();
@@ -255,25 +261,13 @@
             canvas.width = window.innerWidth * dpr; canvas.height = window.innerHeight * dpr;
             ctx.scale(dpr, dpr);
             canvas.style.width = window.innerWidth + 'px'; canvas.style.height = window.innerHeight + 'px';
-            animate();
+            animate(0);
         }
 
-        // 全局鼠标/触摸移动监听
-        window.addEventListener('mousemove', e => { 
-            if(draggedBubble){ 
-                draggedBubble.x = e.clientX - 60; 
-                draggedBubble.y = e.clientY - 60; 
-            } 
-        });
-        window.addEventListener('touchmove', e => { 
-            if(draggedBubble){ 
-                draggedBubble.x = e.touches[0].clientX - 60; 
-                draggedBubble.y = e.touches[0].clientY - 60; 
-            } 
-        }, {passive: false});
-        window.addEventListener('mouseup', () => { if(draggedBubble) draggedBubble.isDragged = false; draggedBubble = null; });
-        window.addEventListener('touchend', () => { if(draggedBubble) draggedBubble.isDragged = false; draggedBubble = null; });
-
+        window.addEventListener('mousemove', e => { if(draggedBubble){ draggedBubble.x = e.clientX-60; draggedBubble.y = e.clientY-60; } });
+        window.addEventListener('touchmove', e => { if(draggedBubble){ const t = e.touches[0]; draggedBubble.x = t.clientX-60; draggedBubble.y = t.clientY-60; e.preventDefault(); } }, {passive: false});
+        window.addEventListener('mouseup', () => draggedBubble = null);
+        window.addEventListener('touchend', () => draggedBubble = null);
     </script>
 </body>
 </html>
