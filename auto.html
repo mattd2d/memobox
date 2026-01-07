@@ -327,7 +327,7 @@ function startDemoSequence() {
                     // 随机微调一下小时和分钟，看起来更自然
                     virtualClock.setHours(Math.floor(Math.random() * 24), Math.floor(Math.random() * 60));
 
-                    const displayDelay = randomDays * 1000; 
+                    const displayDelay = randomDays * 5000; 
 
                     demoTimer = setTimeout(() => {
                         sendSpecificMessage(demoMessages[messageIndex]);
