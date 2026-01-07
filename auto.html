@@ -239,17 +239,25 @@
         let bubbles = [];
         let draggedBubble = null;
 
-        // --- 2. Demo 数据逻辑 ---
+// --- 2. Demo 数据逻辑 ---
         const firstMessage = { type: 'urgent', text: "Someone picked it up! Your plant has a new home." };
 
         const demoMessages = [
             { mode: 'img', text: "It’s all settled in on my desk and looking very vibrant.", img: "https://i.redd.it/just-joined-the-office-and-this-plant-was-on-my-desk-what-v0-g9wvhudwehsb1.jpg?width=3024&format=pjpg&auto=webp&s=85c5083e4e1f4a755cff80f210d004a7f0008389" },
             { mode: 'img', text: "A tiny new sprout just appeared; looks like it’s happy here.", img: "https://s3.amazonaws.com/media.buddinghomestead.com/wp-content/uploads/2018/03/27153950/IMG_1510-001-e1522184839956.jpg" },
             { mode: 'text', text: "Fresh water and a little trim today. Looking much cleaner now." },
+            { mode: 'text', text: "Environmental conditions updated: Temperature and light levels are optimal." },
+            { mode: 'text', text: "Scheduled maintenance completed. Surface cleaned and stability checked." },
+            { mode: 'text', text: "Current status: Stable. No immediate intervention required." },
+            { mode: 'text', text: "Physical orientation adjusted to maximize natural light exposure." },
+            { mode: 'text', text: "System check: The object remains integrated into the new workspace." },
             { mode: 'img', text: "Caught some nice afternoon sun on the leaves, thought I’d share.", img: "https://i.redd.it/advice-for-my-lucky-that-cant-get-great-sunlight-v0-c54gnk7weppb1.jpg?width=3024&format=pjpg&auto=webp&s=a9acb16cfa2a234ca063476e10b1e4e8581d9912" },
+            { mode: 'text', text: "Fresh water and a little trim today. Looking much cleaner now." },
+            { mode: 'text', text: "Environmental conditions updated: Temperature and light levels are optimal." },
             { mode: 'text', text: "Moved it to a warmer spot now that it's getting cold. Hope you’re doing well." }
         ];
         let messageIndex = 0;
+        let demoTimer = null; // 用于存储定时器
 
         // --- 3. 启动函数 ---
         function applyCustomization() {
@@ -279,10 +287,18 @@
         }
 
         function startDemoSequence() {
+            // 首先发送唯一的紧急消息
             sendSpecificMessage(firstMessage);
-            setInterval(() => {
-                sendSpecificMessage(demoMessages[messageIndex]);
-                messageIndex = (messageIndex + 1) % demoMessages.length;
+            
+            // 设置定时器，按顺序发送 demoMessages
+            demoTimer = setInterval(() => {
+                if (messageIndex < demoMessages.length) {
+                    sendSpecificMessage(demoMessages[messageIndex]);
+                    messageIndex++; // 索引加 1
+                } else {
+                    // 当所有消息展示完毕，清除定时器停止循环
+                    clearInterval(demoTimer);
+                }
             }, 10000); 
         }
 
@@ -296,7 +312,7 @@
             }
 
             const notif = document.getElementById('top-notif');
-            document.getElementById('notif-text').innerText = "A new memory arrives...";
+            document.getElementById('notif-text').innerText = "Status update.";
             notif.classList.add('active');
             setTimeout(() => notif.classList.remove('active'), 4000);
         }
