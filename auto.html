@@ -213,6 +213,7 @@
     </div>
 
 <script>
+    
     let currentActiveBubble = null;
         // --- 1. 新增：封面涟漪逻辑 ---
         const rCanvas = document.getElementById('ripple-canvas');
@@ -281,8 +282,10 @@
             { mode: 'text', text: "Moved it to a warmer spot now that it's getting cold. Hope you’re doing well." }
         ];
         let messageIndex = 0;
-        let demoTimer = null; // 用于存储定时器
-
+        let demoTimer = null;
+        // 新增：初始化虚拟时钟为当前时间
+        let virtualClock = new Date();
+    
         // --- 3. 启动函数 ---
         function applyCustomization() {
             const fileInput = document.getElementById('upload-img');
@@ -311,38 +314,36 @@
         }
 
 // --- 3. 启动函数 (已更新：2-7天随机间隔 & 同步时间戳) ---
-        function startDemoSequence() {
-            // 1. 首先发送唯一的开场紧急消息
+function startDemoSequence() {
             sendSpecificMessage(firstMessage);
             
-            // 2. 递归处理后续发送
             function triggerNextMessage() {
                 if (messageIndex < demoMessages.length) {
-                    // 模拟 2-7 天的随机间隔 (演示速度：1秒代表1天，即2000ms到7000ms)
+                    // 1. 随机出 2-7 天
                     const randomDays = Math.floor(Math.random() * 6) + 2; 
+                    
+                    // 2. --- 核心修改：让虚拟时钟真实往前跳跃 ---
+                    virtualClock.setDate(virtualClock.getDate() + randomDays);
+                    // 随机微调一下小时和分钟，看起来更自然
+                    virtualClock.setHours(Math.floor(Math.random() * 24), Math.floor(Math.random() * 60));
+
                     const displayDelay = randomDays * 1000; 
 
                     demoTimer = setTimeout(() => {
                         sendSpecificMessage(demoMessages[messageIndex]);
                         messageIndex++;
-                        
-                        // 递归调用自身
                         triggerNextMessage();
                     }, displayDelay);
-                } else {
-                    console.log("All updates delivered.");
-                    if (demoTimer) clearTimeout(demoTimer);
                 }
             }
             triggerNextMessage();
         }
 
-        function sendSpecificMessage(msg) {
+function sendSpecificMessage(msg) {
             document.body.classList.remove('state-hero');
 
-            // --- 核心修改：生成当前时间戳 ---
-            const now = new Date();
-            const timeStr = now.toLocaleString('en-US', { 
+            // --- 修改：使用 virtualClock 格式化时间 ---
+            const timeStr = virtualClock.toLocaleString('en-US', { 
                 month: 'short', 
                 day: 'numeric', 
                 hour: '2-digit', 
@@ -350,10 +351,9 @@
                 hour12: false 
             });
 
-            // 更新顶部小弹窗：左对齐显示文字，右对齐显示时间
             const notif = document.getElementById('top-notif');
             const notifText = document.getElementById('notif-text');
-            notifText.style.width = "100%"; // 确保撑开宽度
+            notifText.style.width = "100%";
             notifText.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                     <span>Status update.</span>
@@ -361,14 +361,13 @@
                 </div>
             `;
 
-            // 将时间戳传给气泡创建函数
             if (msg.mode === 'img') {
                 createCustomPhotoBubble(msg.img, msg.text, timeStr);
             } else {
                 createBubbleElement({ 
                     type: 'text', 
                     content: msg.text, 
-                    timestamp: timeStr // 存入数据
+                    timestamp: timeStr 
                 }, msg.type === 'urgent');
             }
 
@@ -406,7 +405,7 @@ function setupBubbleObject(el, data, isStatus) {
         el, x: ww/2-60, y: wh/2-60, vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10, 
         isDragged: false, data, isStatus,
         comments: [],
-        // --- 修改这里：优先使用传进来的时间戳 ---
+        // 确保是这一行：
         createdAt: data.timestamp || new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
     };
     
