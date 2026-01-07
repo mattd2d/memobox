@@ -230,15 +230,16 @@
             setTimeout(() => notif.classList.remove('active'), 4000);
         }
 
-        // --- 4. 气泡渲染逻辑 ---
-        function createBubbleElement(data, isStatus) {
-            const el = document.createElement('div');
-            el.className = `bubble is-${data.type} ${isStatus ? 'is-status' : ''}`;
-            el.innerHTML = `<div class="unread-dot"></div><div style="padding:15px; text-align:center;">${data.content}</div>`;
-            stage.appendChild(el);
-            bubbles.push(setupBubbleObject(el, data, isStatus));
-            requestAnimationFrame(() => el.classList.add('spawned'));
-        }
+     // --- 4. 气泡渲染逻辑 (修正版) ---
+function createBubbleElement(data, isStatus) {
+    const el = document.createElement('div');
+    el.className = `bubble is-${data.type} ${isStatus ? 'is-status' : ''}`;
+    // 恢复第一版写法：不添加 padding div，由 CSS 控制气泡内边距
+    el.innerHTML = `<div class="unread-dot"></div>${data.content}`; 
+    stage.appendChild(el);
+    bubbles.push(setupBubbleObject(el, data, isStatus));
+    requestAnimationFrame(() => el.classList.add('spawned'));
+}
 
         function createCustomPhotoBubble(imgSrc, caption) {
             const el = document.createElement('div');
