@@ -264,7 +264,6 @@
     const bObj = { el, x: initialX, y: initialY, vx: 0, vy: 0, isDragged: false, data, isStatus };
     
     let startX, startY, startTime;
-    let isPossibleClick = false;
 
     const startAction = (e) => { 
         const touch = e.touches ? e.touches[0] : e; 
@@ -272,51 +271,39 @@
         startY = touch.clientY; 
         startTime = Date.now();
         
-        isPossibleClick = true; // 初始标记为可能是点击
         draggedBubble = bObj; 
         bObj.isDragged = true; 
-    };
-
-    const moveAction = (e) => {
-        if (!bObj.isDragged) return;
-        const touch = e.touches ? e.touches[0] : e;
-        const moveDist = Math.hypot(touch.clientX - startX, touch.clientY - startY);
-        
-        // 如果移动距离超过 10px，判定为拖拽，不再触发点击弹窗
-        if (moveDist > 10) {
-            isPossibleClick = false;
-        }
+        // 关键：点击瞬间清空速度，防止它自己“滑走”导致判定失败
+        bObj.vx = 0; bObj.vy = 0;
     };
 
     const endAction = (e) => { 
         if(!bObj.isDragged) return; 
         
-        const duration = Date.now() - startTime; 
         const touch = e.changedTouches ? e.changedTouches[0] : e; 
         const dist = Math.hypot(touch.clientX - startX, touch.clientY - startY); 
+        const duration = Date.now() - startTime;
 
-        // 优化判定：时间短 且 位移小，或者是静止点击
-        if (isPossibleClick && duration < 350 && dist < 15) { 
-            // 触发点击业务
+        // 判定加固：只要位移小于 20px 且 时间小于 300ms，就视为点击
+        if (dist < 20 && duration < 300) {
+            // 确保不会触发拖拽逻辑
+            bObj.vx = 0; bObj.vy = 0;
+            
             const dot = el.querySelector('.unread-dot'); 
             if(dot) dot.style.display = 'none'; 
-            openModal(bObj); 
             
-            // 点击后让气泡静止，防止漂移
-            bObj.vx = 0; bObj.vy = 0;
+            // 延迟 50ms 开启弹窗，避开浏览器对 touch 事件的默认行为冲突
+            setTimeout(() => openModal(bObj), 50);
         }
 
         bObj.isDragged = false; 
         draggedBubble = null; 
     };
 
-    // 绑定事件
     el.addEventListener('mousedown', startAction);
     el.addEventListener('touchstart', startAction, {passive: false});
-    
-    // 监听移动来区分拖拽和点击
-    window.addEventListener('mousemove', moveAction);
-    window.addEventListener('touchmove', moveAction, {passive: false});
+    // 注意：move 事件我们依然监听，但不再在里面写 isPossibleClick = false
+    // 这样即便用户手指微抖，只要最后松开时位移不大，依然算点击
     
     window.addEventListener('mouseup', endAction);
     window.addEventListener('touchend', endAction);
