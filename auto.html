@@ -245,12 +245,12 @@
         const demoMessages = [
             { mode: 'img', text: "It’s all settled in on my desk and looking very vibrant.", img: "https://i.redd.it/just-joined-the-office-and-this-plant-was-on-my-desk-what-v0-g9wvhudwehsb1.jpg?width=3024&format=pjpg&auto=webp&s=85c5083e4e1f4a755cff80f210d004a7f0008389" },
             { mode: 'img', text: "A tiny new sprout just appeared; looks like it’s happy here.", img: "https://s3.amazonaws.com/media.buddinghomestead.com/wp-content/uploads/2018/03/27153950/IMG_1510-001-e1522184839956.jpg" },
-            { mode: 'text', text: "Fresh water and a little trim today. Looking much cleaner now." },
-            { mode: 'text', text: "Environmental conditions updated: Temperature and light levels are optimal." },
-            { mode: 'text', text: "Scheduled maintenance completed. Surface cleaned and stability checked." },
-            { mode: 'text', text: "Current status: Stable. No immediate intervention required." },
-            { mode: 'text', text: "Physical orientation adjusted to maximize natural light exposure." },
-            { mode: 'text', text: "System check: The object remains integrated into the new workspace." },
+            { mode: 'text', text: "It’s been sunny lately, so I moved it by the window for some rays." },
+            { mode: 'text', text: "Wiped the dust off the leaves; it looks so much brighter now." },
+            { mode: 'text', text: "It’s doing great and barely shedding. Such a low-maintenance little guy." },
+            { mode: 'text', text: "Turned it around a bit so it doesn't lean too much toward the light." },
+            { mode: 'text', text: "Seeing this splash of green while I work really boosts my mood." },
+            { mode: 'text', text: "It’s raining outside, but having this bit of green makes it feel cozy in here😄." },
             { mode: 'img', text: "Caught some nice afternoon sun on the leaves, thought I’d share.", img: "https://i.redd.it/advice-for-my-lucky-that-cant-get-great-sunlight-v0-c54gnk7weppb1.jpg?width=3024&format=pjpg&auto=webp&s=a9acb16cfa2a234ca063476e10b1e4e8581d9912" },
             { mode: 'text', text: "Fresh water and a little trim today. Looking much cleaner now." },
             { mode: 'text', text: "Environmental conditions updated: Temperature and light levels are optimal." },
@@ -281,25 +281,37 @@
                 document.body.classList.add('ready');
                 initPhysics();
 
-                setTimeout(startDemoSequence, 2000); 
+                setTimeout(startDemoSequence, 8000); 
             };
             reader.readAsDataURL(fileInput.files[0]);
         }
 
+// --- 3. 启动函数 (随机间隔版) ---
         function startDemoSequence() {
-            // 首先发送唯一的紧急消息
+            // 1. 首先发送唯一的开场紧急消息
             sendSpecificMessage(firstMessage);
             
-            // 设置定时器，按顺序发送 demoMessages
-            demoTimer = setInterval(() => {
+            // 2. 定义一个递归函数来处理后续的随机发送
+            function triggerNextMessage() {
                 if (messageIndex < demoMessages.length) {
-                    sendSpecificMessage(demoMessages[messageIndex]);
-                    messageIndex++; // 索引加 1
+                    // 设定随机区间：4秒 到 10秒 之间
+                    const randomDelay = Math.floor(Math.random() * 8000) + 10000;
+
+                    demoTimer = setTimeout(() => {
+                        sendSpecificMessage(demoMessages[messageIndex]);
+                        messageIndex++;
+                        
+                        // 递归调用自身，准备下一条
+                        triggerNextMessage();
+                    }, randomDelay);
                 } else {
-                    // 当所有消息展示完毕，清除定时器停止循环
-                    clearInterval(demoTimer);
+                    console.log("Transmission complete. All messages delivered.");
+                    if (demoTimer) clearTimeout(demoTimer);
                 }
-            }, 10000); 
+            }
+
+            // 3. 开始执行递归
+            triggerNextMessage();
         }
 
         function sendSpecificMessage(msg) {
@@ -359,35 +371,67 @@
             return bObj;
         }
 
-        // --- 5. 动画引擎 ---
+// --- 5. 动画引擎 ---
         function animate(time) {
             const dpr = window.devicePixelRatio || 1;
             ctx.clearRect(0, 0, canvas.width/dpr, canvas.height/dpr);
             const ww = window.innerWidth, wh = window.innerHeight;
-            const avatarEl = document.querySelector('.main-avatar');
-            let cx = ww/2, cy = wh/2;
-            if (avatarEl) { const r = avatarEl.getBoundingClientRect(); cx = r.left+r.width/2; cy = r.top+r.height/2; }
             
-            ctx.beginPath(); ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; ctx.lineWidth = 1.5;
+            // --- 核心修改点：锁定 Avatar 中心点 ---
+            // 不再使用 getBoundingClientRect，因为它受 DOM 布局变化影响
+            // 直接使用屏幕中心作为物理参考点
+            let cx = ww / 2;
+            let cy = wh / 2;
+            
+            // 如果处于 Hero 状态（大头像），稍微向上偏移
+            if (document.body.classList.contains('state-hero')) {
+                cy = wh / 2 - 60; 
+            }
+            
+            ctx.beginPath(); 
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; 
+            ctx.lineWidth = 1.5;
+            
             bubbles.forEach((b, i) => {
                 const currX = b.x+60, currY = b.y+60;
-                let px = cx, py = cy; if(i>0) { px = bubbles[i-1].x+60; py = bubbles[i-1].y+60; }
-                ctx.moveTo(px, py); ctx.quadraticCurveTo((px+currX)/2, (py+currY)/2 + Math.sin(time*0.002+i)*10, currX, currY);
+                let px = cx, py = cy; 
+                if(i > 0) { 
+                    px = bubbles[i-1].x+60; 
+                    py = bubbles[i-1].y+60; 
+                }
+                
+                ctx.moveTo(px, py); 
+                ctx.quadraticCurveTo((px+currX)/2, (py+currY)/2 + Math.sin(time*0.002+i)*10, currX, currY);
+                
                 if (!b.isDragged) {
                     const dx = currX-cx, dy = currY-cy, dist = Math.sqrt(dx*dx+dy*dy)||1;
                     b.vx += (-dy/dist)*0.0008 + (cx-currX)*0.00003;
+                    
                     bubbles.forEach((b2, j) => {
                         if(i===j) return;
                         const pdx = (b2.x+60)-currX, pdy = (b2.y+60)-currY, pdist = Math.hypot(pdx, pdy)||1;
-                        if(pdist<135) { const p=(135-pdist)*0.02; b.vx-=(pdx/pdist)*p; b.vy-=(pdy/pdist)*p; }
+                        if(pdist<135) { 
+                            const p=(135-pdist)*0.02; 
+                            b.vx-=(pdx/pdist)*p; 
+                            b.vy-=(pdy/pdist)*p; 
+                        }
                     });
-                    if(dist<100) { const p=(100-dist)*0.05; b.vx+=(dx/dist)*p; b.vy+=(dy/dist)*p; }
+                    
+                    if(dist<100) { 
+                        const p=(100-dist)*0.05; 
+                        b.vx+=(dx/dist)*p; 
+                        b.vy+=(dy/dist)*p; 
+                    }
+                    
                     b.vx*=0.92; b.vy*=0.92; b.x+=b.vx; b.y+=b.vy;
                 }
-                b.x = Math.max(0, Math.min(ww-120, b.x)); b.y = Math.max(0, Math.min(wh-120, b.y));
+                // 边界检查：确保气泡不超出当前可视窗口
+                b.x = Math.max(0, Math.min(ww-120, b.x)); 
+                b.y = Math.max(0, Math.min(wh-120, b.y));
                 b.el.style.transform = `translate3d(${b.x}px, ${b.y}px, 0)`;
             });
-            ctx.stroke(); requestAnimationFrame(animate);
+            ctx.stroke(); 
+            requestAnimationFrame(animate);
         }
 
         function initPhysics() { resizeCanvas(); animate(0); }
