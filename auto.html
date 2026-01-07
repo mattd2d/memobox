@@ -132,7 +132,8 @@
         #stage, #lineCanvas { transition: opacity 1.2s ease; }
         .bg-glass { position: fixed; inset: 0; z-index: -1; background: #222; background-position: center; background-size: cover; transform: scale(1.8); filter: blur(60px) brightness(0.4); }
         #lineCanvas { position: fixed; inset: 0; z-index: 50; pointer-events: none; }
-        #top-notif { position: fixed; top: -80px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 350px; background: rgba(255,255,255,0.95); padding: 12px 20px; border-radius: 40px; z-index: 5000; display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; }
+        #top-notif { position: fixed; top: -80px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 350px; background: rgba(255,255,255,0.95); padding: 12px 20px; border-radius: 40px; z-index: 5000; display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; 
+        min-width: 260px; /* 增加最小宽度确保时间有地方放 */}
         #top-notif.active { transform: translateX(-50%) translateY(100px); }
         .main-avatar img { width: 100%; height: 100%; object-fit: cover; }
         #stage { position: absolute; inset: 0; z-index: 2500; pointer-events: none; }
@@ -309,60 +310,84 @@
             reader.readAsDataURL(fileInput.files[0]);
         }
 
-// --- 3. 启动函数 (随机间隔版) ---
+// --- 3. 启动函数 (已更新：2-7天随机间隔 & 同步时间戳) ---
         function startDemoSequence() {
             // 1. 首先发送唯一的开场紧急消息
             sendSpecificMessage(firstMessage);
             
-            // 2. 定义一个递归函数来处理后续的随机发送
+            // 2. 递归处理后续发送
             function triggerNextMessage() {
                 if (messageIndex < demoMessages.length) {
-                    // 设定随机区间：4秒 到 10秒 之间
-                    const randomDelay = Math.floor(Math.random() * 8000) + 10000;
+                    // 模拟 2-7 天的随机间隔 (演示速度：1秒代表1天，即2000ms到7000ms)
+                    const randomDays = Math.floor(Math.random() * 6) + 2; 
+                    const displayDelay = randomDays * 1000; 
 
                     demoTimer = setTimeout(() => {
                         sendSpecificMessage(demoMessages[messageIndex]);
                         messageIndex++;
                         
-                        // 递归调用自身，准备下一条
+                        // 递归调用自身
                         triggerNextMessage();
-                    }, randomDelay);
+                    }, displayDelay);
                 } else {
-                    console.log("Transmission complete. All messages delivered.");
+                    console.log("All updates delivered.");
                     if (demoTimer) clearTimeout(demoTimer);
                 }
             }
-
-            // 3. 开始执行递归
             triggerNextMessage();
         }
 
         function sendSpecificMessage(msg) {
             document.body.classList.remove('state-hero');
 
+            // --- 核心修改：生成当前时间戳 ---
+            const now = new Date();
+            const timeStr = now.toLocaleString('en-US', { 
+                month: 'short', 
+                day: 'numeric', 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: false 
+            });
+
+            // 更新顶部小弹窗：左对齐显示文字，右对齐显示时间
+            const notif = document.getElementById('top-notif');
+            const notifText = document.getElementById('notif-text');
+            notifText.style.width = "100%"; // 确保撑开宽度
+            notifText.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <span>Status update.</span>
+                    <span style="font-size: 10px; opacity: 0.4; font-weight: 400; margin-left: 10px;">${timeStr}</span>
+                </div>
+            `;
+
+            // 将时间戳传给气泡创建函数
             if (msg.mode === 'img') {
-                createCustomPhotoBubble(msg.img, msg.text);
+                createCustomPhotoBubble(msg.img, msg.text, timeStr);
             } else {
-                createBubbleElement({ type: 'text', content: msg.text }, msg.type === 'urgent');
+                createBubbleElement({ 
+                    type: 'text', 
+                    content: msg.text, 
+                    timestamp: timeStr // 存入数据
+                }, msg.type === 'urgent');
             }
 
-            const notif = document.getElementById('top-notif');
-            document.getElementById('notif-text').innerText = "Status update.";
             notif.classList.add('active');
             setTimeout(() => notif.classList.remove('active'), 4000);
         }
-
+    
  // --- 4. 气泡渲染逻辑 (已更新：支持独立评论存储) ---
- function createBubbleElement(data, isStatus) {
-            const el = document.createElement('div');
-            el.className = `bubble is-${data.type} ${isStatus ? 'is-status' : ''}`;
-            el.innerHTML = `<div class="unread-dot"></div>${data.content}`; 
-            stage.appendChild(el);
-            bubbles.push(setupBubbleObject(el, data, isStatus));
-            requestAnimationFrame(() => el.classList.add('spawned'));
-        }
+function createBubbleElement(data, isStatus) {
+    const el = document.createElement('div');
+    el.className = `bubble is-${data.type} ${isStatus ? 'is-status' : ''}`;
+    el.innerHTML = `<div class="unread-dot"></div>${data.content}`; 
+    stage.appendChild(el);
+    // 这里 data 已经包含了 timestamp，直接传入即可
+    bubbles.push(setupBubbleObject(el, data, isStatus));
+    requestAnimationFrame(() => el.classList.add('spawned'));
+}
 
-        function createCustomPhotoBubble(imgSrc, caption) {
+function createCustomPhotoBubble(imgSrc, caption, timeStr) {
             const el = document.createElement('div');
             el.className = `bubble is-img`;
             el.innerHTML = `
@@ -370,19 +395,23 @@
                 <img src="${imgSrc}" style="width:100%; height:100%; object-fit:cover; border-radius:50%; pointer-events:none;">
             `;
             stage.appendChild(el);
-            bubbles.push(setupBubbleObject(el, { type: 'img', content: caption, rawImg: imgSrc }, false));
+            // 关键点：把 timeStr 放入 data 对象传给 setupBubbleObject
+            bubbles.push(setupBubbleObject(el, { type: 'img', content: caption, rawImg: imgSrc, timestamp: timeStr }, false));
             requestAnimationFrame(() => el.classList.add('spawned'));
         }
 
 function setupBubbleObject(el, data, isStatus) {
-            const ww = window.innerWidth, wh = window.innerHeight;
-            const bObj = { 
-                el, x: ww/2-60, y: wh/2-60, vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10, 
-                isDragged: false, data, isStatus,
-                comments: [] 
-            };
-            
-            let startX, startY, startTime;
+    const ww = window.innerWidth, wh = window.innerHeight;
+    const bObj = { 
+        el, x: ww/2-60, y: wh/2-60, vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10, 
+        isDragged: false, data, isStatus,
+        comments: [],
+        // --- 修改这里：优先使用传进来的时间戳 ---
+        createdAt: data.timestamp || new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
+    };
+    
+    let startX, startY, startTime;
+    // ... 后面的事件监听代码保持不变 ...
 
             const down = (x, y) => { 
                 startX = x; 
@@ -506,33 +535,33 @@ function setupBubbleObject(el, data, isStatus) {
 
 // --- 6. 交互组件 (已更新：支持独立评论记忆) ---
 
-        function openModal(b) {
-            currentActiveBubble = b; // 锁定当前气泡对象
-            
-            // 1. 清空旧评论显示，并加载该气泡专属的评论记录
+function openModal(b) {
+            currentActiveBubble = b; 
             const list = document.getElementById('comment-list');
             if(list) {
                 list.innerHTML = ""; 
                 if(b.comments && b.comments.length > 0) {
-                    b.comments.forEach(c => {
-                        addCommentToUI(c.text, c.type, false); // false 表示仅加载，不重复存入
-                    });
+                    b.comments.forEach(c => addCommentToUI(c.text, c.type, false));
                 }
             }
 
-            // 2. 移除红点
             const targetEl = b.element || b.el; 
             if (targetEl) {
                 const dot = targetEl.querySelector('.unread-dot');
                 if (dot) dot.remove();
             }
 
-            // 3. 渲染图片或文字内容
             const visual = document.getElementById('m-visual');
             visual.innerHTML = (b.data.type==='img' || b.data.rawImg) ? `<img src="${b.data.rawImg}" style="width:100%; border-radius:15px; margin-bottom:15px;">` : "";
-            document.getElementById('m-text').innerText = b.data.content || "";
             
-            // 4. 显示弹窗
+            // --- 核心修改：在大弹窗正文上方渲染时间戳 ---
+            document.getElementById('m-text').innerHTML = `
+                <div style="text-align: left; font-size: 11px; color: #bbb; margin-bottom: 8px; font-weight: 400; letter-spacing: 0.5px;">
+                    ${b.createdAt}
+                </div>
+                <div style="text-align: left; color: #333; line-height: 1.5;">${b.data.content || ""}</div>
+            `;
+
             document.getElementById('modal-overlay').style.display = 'flex';
             setTimeout(() => document.getElementById('modal-overlay').classList.add('active'), 10);
         }
