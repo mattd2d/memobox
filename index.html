@@ -184,10 +184,21 @@
             }, 400);
         }
 
-        function showSelectionPage(withGuide) {
+function showSelectionPage(withGuide) {
             const page = document.getElementById('selection-page');
             page.style.display = 'flex';
-            
+
+            // --- 只有当不是正在进行引导(withGuide为false)且已经完成过引导时，才填充绿色 ---
+            if (!withGuide && appState.hasGuided && !appState.storedVaults['green']) {
+                appState.storedVaults['green'] = {
+                    name: "LUCKY BAMBOO",
+                    desc: "Watching it grow.",
+                    img: "https://preview.redd.it/my-6-7-year-old-lucky-bamboo-v0-73dtwvzodcqe1.jpeg?width=640&crop=smart&auto=webp&s=f905e4f9b2085d49389f54f3435aad6a3ca6149d"
+                };
+                appState.firstSaveDone = true; 
+                updateDB();
+            }
+
             const pillars = document.querySelectorAll('.color-pillar');
             pillars.forEach(p => {
                 const colorId = p.id.split('-')[1];
@@ -207,8 +218,16 @@
             }, 50);
         }
 
-        function handlePillarClick(color) {
+     function handlePillarClick(color) {
             currentPillarColor = color;
+
+            // 只有当绿色容器已经被自动填充了数据，点击才会跳转 demo
+            if (color === 'green' && appState.storedVaults['green']) {
+                localStorage.setItem('memo_config', JSON.stringify(appState.storedVaults['green']));
+                window.location.href = 'demo.html'; 
+                return;
+            }
+
             if (appState.storedVaults[color]) {
                 showMainDisplay(color);
             } else {
