@@ -202,11 +202,19 @@ function showSelectionPage(withGuide) {
             const pillars = document.querySelectorAll('.color-pillar');
             pillars.forEach(p => {
                 const colorId = p.id.split('-')[1];
-                // 如果完成过至少一次保存，唤醒所有柱子
+                
+                // 核心逻辑：如果是引导模式(withGuide为true)，除了红色(pillar-red)全部禁用
+                if (withGuide && p.id !== 'pillar-red') {
+                    p.style.pointerEvents = 'none';
+                    p.style.opacity = '0.1'; // 视觉上变暗
+                } else {
+                    p.style.pointerEvents = 'auto';
+                    p.style.opacity = '1';
+                }
+
                 if (appState.firstSaveDone) {
                     p.classList.add('fully-active');
                 }
-                // 标记已填充状态
                 if (appState.storedVaults[colorId]) {
                     p.classList.add('filled');
                 }
