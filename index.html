@@ -206,7 +206,7 @@ function showSelectionPage(withGuide) {
                 // 核心逻辑：如果是引导模式(withGuide为true)，除了红色(pillar-red)全部禁用
                 if (withGuide && p.id !== 'pillar-red') {
                     p.style.pointerEvents = 'none';
-                    p.style.opacity = '0.1'; // 视觉上变暗
+                    p.style.opacity = '0.8'; // 视觉上变暗
                 } else {
                     p.style.pointerEvents = 'auto';
                     p.style.opacity = '1';
